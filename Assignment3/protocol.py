@@ -1,3 +1,9 @@
+import os
+from cryptography.hazmat.primitives.ciphers import (
+    Cipher, algorithms, modes
+)
+from cryptography.hazmat.primitives import padding
+
 class Protocol:
     # Initializer (Called from app.py)
     # TODO: MODIFY ARGUMENTS AND LOGIC AS YOU SEEM FIT
@@ -38,15 +44,43 @@ class Protocol:
 
     # Encrypting messages
     # TODO: IMPLEMENT ENCRYPTION WITH THE SESSION KEY (ALSO INCLUDE ANY NECESSARY INFO IN THE ENCRYPTED MESSAGE FOR INTEGRITY PROTECTION)
-    # RETURN AN ERROR MESSAGE IF INTEGRITY VERITIFCATION OR AUTHENTICATION FAILS
-    def EncryptAndProtectMessage(self, plain_text):
-        cipher_text = plain_text
-        return cipher_text
+    # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
+    def EncryptAndProtectMessage(self, plaintext):
+        iv = os.urandom(16)      
+        return self._Encrypt(plaintext, self._key, iv)
 
 
     # Decrypting and verifying messages
     # TODO: IMPLEMENT DECRYPTION AND INTEGRITY CHECK WITH THE SESSION KEY
-    # RETURN AN ERROR MESSAGE IF INTEGRITY VERITIFCATION OR AUTHENTICATION FAILS
-    def DecryptAndVerifyMessage(self, cipher_text):
-        plain_text = cipher_text
-        return plain_text
+    # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
+    def DecryptAndVerifyMessage(self, ciphertext):
+        iv = ciphertext[0:16]
+        tag = ciphertext[-16:]
+        decryptor = Cipher(algorithms.AES(self._key), modes.CBC(iv)).decryptor()
+        unpadder = padding.PKCS7(128).unpadder()
+        plaintext = decryptor.update(ciphertext[16:]) + decryptor.finalize()
+        plaintext = unpadder.update(plaintext) + unpadder.finalize()
+        plaintext = plaintext.decode('utf-8')
+        
+        tag_new = self._Encrypt(plaintext, self._key, iv)[-16:]
+        if tag != tag_new:
+            print(tag)
+            print(tag_new)
+            print(plaintext)
+            return "ERROR: integrity check failed"
+        
+        try: 
+            return plaintext
+        except:
+            return "ERROR: authentication check failed"
+
+    def _Encrypt(self, plaintext, key, iv):
+        encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
+        
+        # ciphertext is in bytes
+        # encryptor.update() returns as bytes
+        # encryptor.finalize() returns the results of processing the final block as bytes
+        # append iv: https://stackoverflow.com/questions/44217923/how-does-aes-decrypt-with-a-different-iv
+        return iv + encryptor.update(padded_data) + encryptor.finalize()
