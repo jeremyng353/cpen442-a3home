@@ -9,7 +9,10 @@ class Protocol:
     # Initializer (Called from app.py)
     # TODO: MODIFY ARGUMENTS AND LOGIC AS YOU SEEM FIT
     def __init__(self):
-        self._key = None
+        self._fullKey = None
+        self._privateKey = None
+        self._g = None #diffie
+        self._p = None #hellman
         pass
 
 
@@ -34,9 +37,10 @@ class Protocol:
 
 
     # Setting the key for the current session
-    # TODO: MODIFY AS YOU SEEM FIT
-    def SetSessionKey(self, key):
-        self._key = key
+    # TODO: Diffie Helman - Sam
+    def SetSessionKey(self, partialkey):
+        tmp = partialkey ** self._privateKey
+        self._fullKey = tmp % self._p
         pass
 
 
