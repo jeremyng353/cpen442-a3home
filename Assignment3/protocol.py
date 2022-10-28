@@ -1,4 +1,5 @@
 import os
+import secrets
 from cryptography.hazmat.primitives.ciphers import (
     Cipher, algorithms, modes
 )
@@ -14,8 +15,9 @@ class Protocol:
 
     # Creating the initial message of your protocol (to be send to the other party to bootstrap the protocol)
     # TODO: IMPLEMENT THE LOGIC (MODIFY THE INPUT ARGUMENTS AS YOU SEEM FIT)
-    def GetProtocolInitiationMessage(self):
-        return ""
+    def GetProtocolInitiationMessage(self, name):
+        nonce = secrets.randbits(32)
+        return f"{name}, {nonce}"
 
 
     # Checking if a received message is part of your protocol (called from app.py)
