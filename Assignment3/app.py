@@ -154,7 +154,8 @@ class Assignment3VPN:
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
                     # Processing the protocol message
-                    self.prtcl.ProcessReceivedProtocolMessage(cipher_text)
+                    sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text)
+                    self.SendMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
                 else:

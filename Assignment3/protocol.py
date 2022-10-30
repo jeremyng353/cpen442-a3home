@@ -9,7 +9,6 @@ from cryptography.hazmat.primitives import padding
 
 class Protocol:
     # Initializer (Called from app.py)
-    # TODO: MODIFY ARGUMENTS AND LOGIC AS YOU SEEM FIT
     def __init__(self, name, symmetricKey, g, p):
         self._sessionKey = None
         self._symmetricKey = symmetricKey
@@ -31,18 +30,18 @@ class Protocol:
 
 
     # Creating the initial message of your protocol (to be send to the other party to bootstrap the protocol)
-    # TODO: IMPLEMENT THE LOGIC (MODIFY THE INPUT ARGUMENTS AS YOU SEEM FIT)
     def GetProtocolInitiationMessage(self):
+        # Message: "App", Ra, 1
         nonce = secrets.randbits(32)
         self._nonceA = nonce    
-        self._message_counter = 2
-        return f"{self._myName}, {nonce}, 1"
+        self._message_counter = 1
+        return f"{self._myName}, {self._nonceA}, 1"
 
 
     # Checking if a received message is part of your protocol (called from app.py)
-    # TODO: IMPLMENET THE LOGIC
     def IsMessagePartOfProtocol(self, message):
-        return message.split(", ")[-1] == self._message_counter
+        #check message_counter
+        return int(message.split(", ")[2]) == self._message_counter
 
 
     # Processing protocol message
@@ -50,69 +49,78 @@ class Protocol:
     # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
         args = message.split(", ")
-        print(args[-1])
-        match args[-1]:              
+        match args[-1]: # message counter      
             case "1":
                 # “App”, Ra, 1 
                 self._otherName = args[0]
                 self._nonceA = args[1]
-                
-                print(self._otherName)
-                print(self._nonceA)
-                # TODO: send next msg, increment message_counter
+                print("\n CASE 1 in PROCESS \n")
+                print(f"Other name: {self._otherName}")
+                print(f"Ra = {self._nonceA}")
+
+                # send next msg, increment message_counter
                 self._nonceB = secrets.randbits(32)
-                # TODO: encryptandprotectmessage is currently byte-like, not string
-                next_message = f"{self._nonceB}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._nonceA}, {self._myDH}')}, 2"
-                # TODO: send next_message
+                print(f"Generate Rb = {self._nonceB}")
+                # Rb, E("Sever", Ra, ga mod p, K), 2
+                next_message = f"{self._nonceB}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._nonceA}, {self._myDH}', self._symmetricKey)}, 2"
                 self._message_counter = 2
+                return next_message
                 
-            case "2":
-                # Rb, {“Server”, Ra, ga mod p}K_as, 2
-                self._nonceB = args[0]
-                print(self._nonceB)
-                print("line 73")
-                for x in args:
-                    print(x)
+            case "2": # counter = 2
+                ## Rb, E("Sever", Ra, ga mod p, K), 2
+                Rb = args[0]
+                cipher_text = args[1]
+                print("\n CASE 2 in PROCESS \n")
                     
                 '''
                     TODO
                     there's something wrong with args[1], i think its due to message being a string instead of being bytes
                     however, aren't messages technically sent as a bitstream anyways
                 '''  
-                plaintext = self.DecryptAndVerifyMessage(args[1]).split(", ")
-                print("line 75")
-                print(plaintext)
-                print("line 77")
-                self._otherName = plaintext[0]
-                print(self._otherName)
-                # if self._nonceA != plaintext[1]:
-                    # TODO: error, encrypted nonceA is not same nonceA in first message
+                plaintext = self.DecryptAndVerifyMessage(cipher_text, self._symmetricKey)
+                other_mode = plaintext[0]
+                Ra = plaintext[1]
+                ga_mod_p = plaintext[2]
 
-                self._otherDH = plaintext[2]
-                print(self._ga_modp)
-                
+                print(f"Rb = {Rb}")
+                print(f"other name = {other_mode}")
+                print(f"Ra = {Ra}")
+                print(f"g_a mod p = {ga_mod_p}")
+
+                #assert(Ra == self._nonceA)
+
                 # TODO: encryptandprotectmessage is currently byte-like, not string
-                next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._nonceB}, {self._gb_modp}')}, 3"
-                # TODO: send next_msg
+                # E(“App”, Rb, gb mod p, K), 3
+                next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._nonceB}, {self._gb_modp}', self._symmetricKey)}, 3"
+
+                self._otherDH = ga_mod_p
+                self._otherDH = 4
                 self.SetSessionKey()
+
                 self._message_counter = 3
+                return next_message
                 
             case "3":
-                # {“App”, Rb, gs mod p}K_as, 3
-                plaintext = self.DecryptAndVerifyMessage(args[1]).split(", ")
-                print(plaintext)
-                # if self._otherName != plaintext[0]:
-                    # TODO: error, not the same person?
+                # E(“App”, Rb, gb mod p, K), 3
+                plaintext = self.DecryptAndVerifyMessage(args[0], self._symmetricKey)
+                other_mode = plaintext[0]
+                Rb = plaintext[1]
+                gb_mod_p = plaintext[2]
+
+                print(f"other name = {other_mode}")
+                print(f"Rb = {Rb}")
+                print(f"g_b mod p = {gb_mod_p}")
+
+                #assert(other_mode == self._otherName)
+                #assert(Rb == self._nonceB)
                     
-                # if self._nonceB != plaintext[1]:
-                    # TODO: error, encrypted nonceB is not same nonceB in second message
-                    
-                self._gb_modp = plaintext[2]
-                print(self._gb_modp)
+                self._gb_modp = gb_mod_p
+
                 self.SetSessionKey()
-                
-                self._message_counter = 1                    
-                
+                self._message_counter = 1       
+                #TODO: send message  with DH key  
+                next_message = "encrypted data"
+                return next_message
         pass
 
 
@@ -128,7 +136,8 @@ class Protocol:
     # Encrypting messages
     # TODO: IMPLEMENT ENCRYPTION WITH THE SESSION KEY (ALSO INCLUDE ANY NECESSARY INFO IN THE ENCRYPTED MESSAGE FOR INTEGRITY PROTECTION)
     # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
-    def EncryptAndProtectMessage(self, plaintext):
+    def EncryptAndProtectMessage(self, plaintext, key):
+        # TODO: use key as key can be DH, shared secret symmetric_key
         iv = os.urandom(16)      
         return self._Encrypt(plaintext, self._symmetricKey, iv)
 
@@ -136,7 +145,9 @@ class Protocol:
     # Decrypting and verifying messages
     # TODO: IMPLEMENT DECRYPTION AND INTEGRITY CHECK WITH THE SESSION KEY
     # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
-    def DecryptAndVerifyMessage(self, ciphertext):
+    def DecryptAndVerifyMessage(self, ciphertext, key):
+        # TODO: use key because it can be DH, symmetric_key
+        return ["Server", "Ra", "g_a mod p"]
         # ciphertext = str(ciphertext).encode()
         iv = ciphertext[0:16]
         tag = ciphertext[-16:]
@@ -159,6 +170,7 @@ class Protocol:
             return "ERROR: authentication check failed"
 
     def _Encrypt(self, plaintext, key, iv):
+        return "Cipher text"
         encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
         padder = padding.PKCS7(128).padder()
         padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
@@ -171,3 +183,19 @@ class Protocol:
         # retval = iv + encryptor.update(padded_data) + encryptor.finalize()
         # return int.from_bytes(retval, "big")
         return iv + encryptor.update(padded_data) + encryptor.finalize()
+
+
+# Main logic
+if __name__ == '__main__':
+    # g=3, p=5, K=10 
+    prot = Protocol("Client", 10, 3, 5)
+    init_msg = prot.GetProtocolInitiationMessage()
+    print(f"Initial message = {init_msg}")
+    check = prot.IsMessagePartOfProtocol(init_msg)
+    print(f"check initial message = {check}")
+    msg_2 = prot.ProcessReceivedProtocolMessage(init_msg)
+    print(f"Message 2 = {msg_2}")
+    msg_3 = prot.ProcessReceivedProtocolMessage(msg_2)
+    print(f"Message 3 = {msg_3}\n")
+    #TODO test with two instances of the program running
+
