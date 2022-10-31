@@ -22,7 +22,7 @@ class Protocol:
         self._myName = name
         self._otherName = None
         self._myExponent = 3 # currently using 3 for testing, replace with secrets.randbits(8)
-        self._myDH = (self._g ** self. _myExponent) % self._p
+        self._myDH = (self._g ** self._myExponent) % self._p
         self._otherDH = None
         self._ga_modp = None
         self._gb_modp = None
