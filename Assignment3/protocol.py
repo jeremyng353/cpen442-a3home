@@ -188,7 +188,7 @@ class Protocol:
         encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
         # padder = padding.PKCS7(128).padder()
         # padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
-        padded_data = bytes(plaintext, 'utf-8') + len(bytes(plaintext, 'utf-8')) % 16 * b'0'
+        padded_data = bytes(plaintext, 'utf-8') + (16 - len(bytes(plaintext, 'utf-8')) % 16) * b'0'
         
         
         
