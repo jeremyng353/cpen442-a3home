@@ -34,25 +34,25 @@ class Protocol:
         nonce = secrets.randbits(32)
         self._myNonce = nonce    
         self._messageCounter = 1
-        return f"{self._myName}, {self._myNonce}, 1"
+        return [self._myName, self._myNonce, 1]
+        # return f"{self._myName}, {self._myNonce}, 1"
 
 
     # Checking if a received message is part of your protocol (called from app.py)
     def IsMessagePartOfProtocol(self, message):
-        #check message_counter
-        return int(message.split(", ")[2]) == self._messageCounter
+        # check message_counter
+        return message[-1] == self._messageCounter
 
 
     # Processing protocol message
     # TODO: IMPLMENET THE LOGIC (CALL SetSessionKey ONCE YOU HAVE THE KEY ESTABLISHED)
     # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
-        args = message.split(", ")
-        match args[-1]: # message counter      
-            case "1":
-                # Received: “other_name”, other_nonce, 1 
-                self._otherName = args[0]
-                self._otherNonce = args[1]
+        match message[-1]: # message counter      
+            case 1:
+                # Received: [“other_name”, other_nonce, 1] 
+                self._otherName = message[0]
+                self._otherNonce = message[1]
                 print("\n PROCESSING HANDSHAKE MSG 1 \n")
                 print(f"Other name = {self._otherName}")
                 print(f"Other nonce = {self._otherNonce}")
@@ -61,26 +61,26 @@ class Protocol:
                 self._myNonce = secrets.randbits(32)
                 print(f"My nonce generated = {self._myNonce}")
                 # my_nonce, E("my_name", other_nonce, myDH, K), 2
-                # TODO vvvvv this line is wrong vvvvv
-                next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
-                self._messageCounter = 2
+                next_message = [self._myNonce, self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 2]
+                # next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
+                self._messageCounter = 3
                 return next_message
                 
-            case "2": # counter = 2
+            case 2: # counter = 2
                 ## Received: other_nonce, E("other_name", my_nonce, otherDH, K), 2
-                self._otherNonce = args[0]
-                cipher_text = args[1]
+                self._otherNonce = message[0]
+                cipher_text = message[1]
                 print("\n PROCESSING HANDSHAKE MSG 2 \n")
                     
                 '''
                     TODO
-                    there's something wrong with args[1], i think its due to message being a string instead of being bytes
+                    there's something wrong with message[1], i think its due to message being a string instead of being bytes
                     however, aren't messages technically sent as a bitstream anyways
                 '''  
-                plaintext = self.DecryptAndVerifyMessage(cipher_text)
+                plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
                 self._otherName = plaintext[0]
-                my_nonce = plaintext[1]
-                self._otherDH = plaintext[2]
+                my_nonce = int(plaintext[1])
+                self._otherDH = int(plaintext[2])
 
                 print(f"other name = {self._otherName}")
                 print(f"My nonce, according to received message = {my_nonce}")
@@ -92,19 +92,21 @@ class Protocol:
 
                 # TODO: encryptandprotectmessage is currently byte-like, not string
                 # Send E(“my_name”, other_nonce, my_DH, K), 3
-                next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 3"
+                next_message = [self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 3]
+                # next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 3"
 
                 self.SetSessionKey()
-                self._messageCounter = 3
+                self._messageCounter = 4
                 return next_message
                 
-            case "3":
+            case 3:
                 # Received : E(“other_name”, my_nonce, other_DH, K), 3
                 print("\n PROCESSING HANDSHAKE MSG 3 \n")
-                plaintext = self.DecryptAndVerifyMessage(args[0])
+                plaintext = self.DecryptAndVerifyMessage(message[0]).split(", ")
+                print(f"plaintext: {plaintext}")
                 other_name = plaintext[0]
-                my_nonce = plaintext[1]
-                self._otherDH = plaintext[2]
+                my_nonce = int(plaintext[1])
+                self._otherDH = int(plaintext[2])
 
                 print(f"Other name recieved in encrypted message = {other_name}")
                 print(f"actual other name = {self._otherName}")
@@ -117,11 +119,15 @@ class Protocol:
 
                 self.SetSessionKey()
                 # TODO confirm behavior after connection established
-                self._messageCounter = 1       
-                #TODO: send message  with DH key  
+                # TODO: not sure if messageCounter should be reset to 1 or another number to indicate we're sending data now
+                self._messageCounter = 4       
+                # TODO: send message with DH key  
                 next_message = "encrypted data"
                 return next_message
-        pass
+            
+            case _:
+                # TODO: throw an exception, message is not part of protocol
+                pass
 
 
     # Setting the key for the current session
@@ -156,12 +162,11 @@ class Protocol:
         print("-------------------------")
         print(ciphertext)
         print(iv)
-        print(b64.b64encode(iv.encode("utf-8")))
         print("-------------------------")
-        decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(b64.b64encode(iv.encode("utf-8")))).decryptor()
+        decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
         unpadder = padding.PKCS7(128).unpadder()
         # don't decrypt first 16 and last 16 bytes since they're iv and MAC
-        plaintext = decryptor.update(b64.b64encode(ciphertext[16:len(ciphertext)-16].encode("utf-8"))) + decryptor.finalize()
+        plaintext = decryptor.update(ciphertext[16:len(ciphertext)-16]) + decryptor.finalize()
         plaintext = unpadder.update(plaintext) + unpadder.finalize()
         plaintext = plaintext.decode('utf-8')
         print("PLAINTEXT")

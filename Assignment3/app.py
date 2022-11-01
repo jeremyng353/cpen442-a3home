@@ -51,7 +51,9 @@ class Assignment3VPN:
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
         
         # Creating a protocol object
-        self.prtcl = Protocol()
+        # self.prtcl = Protocol()
+        symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
+        self.prtcl = Protocol("Name", symmetric_key, 23, 17)
      
     # Distructor     
     def __del__(self):
