@@ -3,7 +3,7 @@ import os
 import base64 as b64
 test = Protocol("Alice", os.urandom(16), 7, 15)
 plaintext = "this lab kinda rough bro"
-# print(test.EncryptAndProtectMessage(plaintext))
+print(test.DecryptAndVerifyMessage(test.EncryptAndProtectMessage(plaintext)))
 # print(b64.decodebytes(test.EncryptAndProtectMessage(plaintext)))
 # bytetext = None
 # print(b64.decode(test.EncryptAndProtectMessage(plaintext), bytetext))

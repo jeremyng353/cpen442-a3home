@@ -164,11 +164,11 @@ class Protocol:
         print(iv)
         print("-------------------------")
         decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
-        unpadder = padding.PKCS7(128).unpadder()
+        # unpadder = padding.PKCS7(128).unpadder()
         # don't decrypt first 16 and last 16 bytes since they're iv and MAC
         plaintext = decryptor.update(ciphertext[16:len(ciphertext)-16]) + decryptor.finalize()
-        plaintext = unpadder.update(plaintext) + unpadder.finalize()
-        plaintext = plaintext.decode('utf-8')
+        # plaintext = unpadder.update(plaintext) + unpadder.finalize()
+        plaintext = plaintext.decode('utf-8').strip('0')
         print("PLAINTEXT")
         print(plaintext)
         
@@ -186,8 +186,11 @@ class Protocol:
 
     def _Encrypt(self, plaintext, key, iv):
         encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
-        padder = padding.PKCS7(128).padder()
-        padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
+        # padder = padding.PKCS7(128).padder()
+        # padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
+        padded_data = bytes(plaintext, 'utf-8') + len(bytes(plaintext, 'utf-8')) % 16 * b'0'
+        
+        
         
         # ciphertext is in bytes
         # encryptor.update() returns as bytes
