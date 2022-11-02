@@ -14,8 +14,6 @@ class Protocol:
     def __init__(self, name, symmetricKey, g, p):
         self._sessionKey = None
         self._symmetricKey = symmetricKey
-        self._fullKey = None
-        self._privateKey = None
         self._g = g
         self._p = p
         self._nextExpectedHandshakeMessage = 1
@@ -124,7 +122,7 @@ class Protocol:
                 self.SetSessionKey()
                 # TODO confirm behavior after connection established
                 # TODO: not sure if messageCounter should be reset to 1 or another number to indicate we're sending data now
-                self._nextExpectedHandshakeMessage = 4       
+                self._nextExpectedHandshakeMessage = 5       
                 # TODO: send message with DH key  
                 next_message = "done"
                 return next_message

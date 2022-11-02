@@ -165,7 +165,7 @@ class Assignment3VPN:
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     print(f'line 163 app.py, next message to send: {sendMessage}')
                     # self.SendMessage(sendMessage)
-                    if self.prtcl._nextExpectedHandshakeMessage != 4:
+                    if self.prtcl._nextExpectedHandshakeMessage != 5:
                         self._sendHandshakeMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
