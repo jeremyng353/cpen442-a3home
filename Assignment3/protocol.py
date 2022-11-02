@@ -38,8 +38,7 @@ class Protocol:
 
     # Checking if a received message is part of your protocol (called from app.py)
     def IsMessagePartOfProtocol(self, message):
-        jmessage = json.loads(message)
-        return self._nextExpectedHandshakeMessage <= 3 and jmessage["handshake"] == self._nextExpectedHandshakeMessage
+        return self._nextExpectedHandshakeMessage <= 3
 
 
     # Processing protocol message
