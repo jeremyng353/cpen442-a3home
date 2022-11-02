@@ -6,6 +6,7 @@ import pygubu
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
+import json
 
 # local import from "protocol.py"
 from protocol import Protocol
@@ -158,9 +159,9 @@ class Assignment3VPN:
                     self.secureButton["state"] = "disabled"
                     # Processing the protocol message
                     # TODO: bytearray --> list
-                    print(list(cipher_text.decode('utf-8')))
+                    print(cipher_text.decode('utf-8'))
                     print("line 161, received a message part of the protocol in app.py")
-                    sendMessage = self.prtcl.ProcessReceivedProtocolMessage(list(cipher_text.decode('utf-8')))
+                    sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     print(f'line 163 app.py, next message to send: {sendMessage}')
                     # self.SendMessage(sendMessage)
                     self._sendHandshakeMessage(sendMessage)
@@ -230,17 +231,7 @@ class Assignment3VPN:
         
             byteString = handshake_list[0] + b'1111' + 
         ''' 
-        
-        for i, x in enumerate(handshake_list):
-            if isinstance(x,int):
-                x = str(x)
-                
-            if isinstance(x, str):
-                x = x.encode()
-            handshake_list[i] = x
-        handshake_list = "".join(handshake_list)
-        print("sending handshake message, line 220 in app.py")
-        print(f'handshake_list: {handshake_list}')
+
         self.conn.send(handshake_list.encode())
 
     # Clear the logs window

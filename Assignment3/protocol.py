@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.ciphers import (
 )
 import base64 as b64
 from cryptography.hazmat.primitives import padding
+import json
 
 # from Assignment3.test import DecryptAndVerifyMessage
 
@@ -33,8 +34,10 @@ class Protocol:
         # Send Message: "my_name", my_nonce, 1
         nonce = secrets.randbits(32)
         self._myNonce = nonce    
+        print(nonce)
         self._nextExpectedHandshakeMessage = 2
-        return [self._myName, self._myNonce, 1]
+        return '{ "name":"' + self._myName + '", "nonce":' + str(self._myNonce) + ', "handshake":' + str(1) +'}'
+        # return [self._myName, self._myNonce, 1]
         # return f"{self._myName}, {self._myNonce}, 1"
 
 
@@ -50,11 +53,12 @@ class Protocol:
     # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
         # TODO: IMPORTANT, app.py calls this function with a string as the input
-        match self._nextExpectedHandshakeMessage: # message counter      
+        jmessage = json.loads(message)
+        match jmessage["handshake"]: # message counter      
             case 1:
                 # Received: [“other_name”, other_nonce, 1] 
-                self._otherName = message[0]
-                self._otherNonce = message[1]
+                self._otherName = jmessage["name"]
+                self._otherNonce = jmessage["nonce"]
                 print("\n PROCESSING HANDSHAKE MSG 1 \n")
                 print(f"Other name = {self._otherName}")
                 print(f"Other nonce = {self._otherNonce}")
@@ -63,15 +67,18 @@ class Protocol:
                 self._myNonce = secrets.randbits(32)
                 print(f"My nonce generated = {self._myNonce}")
                 # my_nonce, E("my_name", other_nonce, myDH, K), 2
-                next_message = [self._myNonce, self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 2]
+                encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
+                
+                next_message = '{ "nonce":' + str(self._myNonce) + ', "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(2) + '}'
                 # next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
                 self._nextExpectedHandshakeMessage = 3
                 return next_message
                 
             case 2: # counter = 2
                 ## Received: other_nonce, E("other_name", my_nonce, otherDH, K), 2
-                self._otherNonce = message[0]
-                cipher_text = message[1]
+                print(f'ciphertext pre decode: {jmessage["cipher_text"]}')
+                self._otherNonce = jmessage["nonce"]
+                cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
                 print("\n PROCESSING HANDSHAKE MSG 2 \n")
 
                 plaintext = self.DecryptAndVerifyMessage(cipher_text)
@@ -91,7 +98,8 @@ class Protocol:
 
                 # TODO: encryptandprotectmessage is currently byte-like, not string
                 # Send E(“my_name”, other_nonce, my_DH, K), 3
-                next_message = [self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 3]
+                encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
+                next_message = '{ "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(3) + '}'
                 # next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 3"
 
                 self.SetSessionKey()
@@ -100,8 +108,9 @@ class Protocol:
                 
             case 3:
                 # Received : E(“other_name”, my_nonce, other_DH, K), 3
+                cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
                 print("\n PROCESSING HANDSHAKE MSG 3 \n")
-                plaintext = self.DecryptAndVerifyMessage(message[0]).split(", ")
+                plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
                 print(f"plaintext: {plaintext}")
                 other_name = plaintext[0]
                 my_nonce = int(plaintext[1])
