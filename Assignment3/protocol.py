@@ -34,7 +34,6 @@ class Protocol:
         # Send Message: "my_name", my_nonce, 1
         nonce = secrets.randbits(32)
         self._myNonce = nonce    
-        print(nonce)
         self._nextExpectedHandshakeMessage = 2
         return '{ "name":"' + self._myName + '", "nonce":' + str(self._myNonce) + ', "handshake":' + str(1) +'}'
         # return [self._myName, self._myNonce, 1]
@@ -76,13 +75,11 @@ class Protocol:
                 
             case 2: # counter = 2
                 ## Received: other_nonce, E("other_name", my_nonce, otherDH, K), 2
-                print(f'ciphertext pre decode: {jmessage["cipher_text"]}')
                 self._otherNonce = jmessage["nonce"]
                 cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
                 print("\n PROCESSING HANDSHAKE MSG 2 \n")
 
                 plaintext = self.DecryptAndVerifyMessage(cipher_text)
-                print(f'plaintext: {plaintext}')
                 plaintext = plaintext.split(", ")
                 self._otherName = plaintext[0]
                 my_nonce = int(plaintext[1])
@@ -111,7 +108,6 @@ class Protocol:
                 cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
                 print("\n PROCESSING HANDSHAKE MSG 3 \n")
                 plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
-                print(f"plaintext: {plaintext}")
                 other_name = plaintext[0]
                 my_nonce = int(plaintext[1])
                 self._otherDH = int(plaintext[2])
@@ -166,7 +162,6 @@ class Protocol:
     # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
     def DecryptAndVerifyMessage(self, ciphertext):
         # TODO: use key because it can be DH, symmetric_key
-        print(f'type of ciphertext before parsing: {type(ciphertext)}')
         # print(f'len of ciphertext before parsing: {len(ciphertext)}')
 
         # ciphertext = iv + E(text) + tag
@@ -193,12 +188,7 @@ class Protocol:
         
         plaintext = decryptor.update(encrypted_text) + decryptor.finalize()
         # plaintext = plaintext.decode('utf-8').strip('0')
-        print("------p==------")
-        print(f'plaintext before decoding: {plaintext}')
         plaintext = plaintext.decode('utf-8').strip('0')
-        print("PLAINTEXT")
-        print(plaintext)
-        print("ENDPLAINTEXT")
         
         if tag != encrypted_text[-16:]:
             return "ERROR: integrity check failed"
