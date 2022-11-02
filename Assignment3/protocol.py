@@ -17,7 +17,7 @@ class Protocol:
         self._privateKey = None
         self._g = g
         self._p = p
-        self._messageCounter = 1
+        self._nextExpectedHandshakeMessage = 1
         self._myNonce = None
         self._otherNonce = None
         self._myName = name
@@ -33,7 +33,7 @@ class Protocol:
         # Send Message: "my_name", my_nonce, 1
         nonce = secrets.randbits(32)
         self._myNonce = nonce    
-        self._messageCounter = 2
+        self._nextExpectedHandshakeMessage = 2
         return [self._myName, self._myNonce, 1]
         # return f"{self._myName}, {self._myNonce}, 1"
 
@@ -41,8 +41,8 @@ class Protocol:
     # Checking if a received message is part of your protocol (called from app.py)
     def IsMessagePartOfProtocol(self, message):
         # check message_counter
-        # return message[-1] == self._messageCounter
-        return self._messageCounter <= 3
+        # return message[-1] == self._nextExpectedHandshakeMessage
+        return self._nextExpectedHandshakeMessage <= 3
 
 
     # Processing protocol message
@@ -51,7 +51,7 @@ class Protocol:
     def ProcessReceivedProtocolMessage(self, message):
         # TODO: IMPORTANT, app.py calls this function with a string as the input
         print("processreceived called")
-        match self._messageCounter: # message counter      
+        match self._nextExpectedHandshakeMessage: # message counter      
             case 1:
                 # Received: [“other_name”, other_nonce, 1] 
                 self._otherName = message[0]
@@ -66,8 +66,9 @@ class Protocol:
                 # my_nonce, E("my_name", other_nonce, myDH, K), 2
                 next_message = [self._myNonce, self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 2]
                 # next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
-                self._messageCounter = 3
+                self._nextExpectedHandshakeMessage = 3
                 print(str(next_message))
+                print(next_message)
                 return next_message
                 
             case 2: # counter = 2
@@ -75,7 +76,7 @@ class Protocol:
                 self._otherNonce = message[0]
                 cipher_text = message[1]
                 print("\n PROCESSING HANDSHAKE MSG 2 \n")
-                    
+                print(message)   
                 '''
                     TODO
                     there's something wrong with message[1], i think its due to message being a string instead of being bytes
@@ -100,7 +101,7 @@ class Protocol:
                 # next_message = f"{self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 3"
 
                 self.SetSessionKey()
-                self._messageCounter = 4
+                self._nextExpectedHandshakeMessage = 4
                 print(str(next_message))
                 return next_message
                 
@@ -125,7 +126,7 @@ class Protocol:
                 self.SetSessionKey()
                 # TODO confirm behavior after connection established
                 # TODO: not sure if messageCounter should be reset to 1 or another number to indicate we're sending data now
-                self._messageCounter = 4       
+                self._nextExpectedHandshakeMessage = 4       
                 # TODO: send message with DH key  
                 next_message = "encrypted data"
                 return next_message
@@ -164,25 +165,26 @@ class Protocol:
     def DecryptAndVerifyMessage(self, ciphertext):
         # TODO: use key because it can be DH, symmetric_key
         print(f'type of ciphertext before parsing: {type(ciphertext)}')
-        print(f'len of ciphertext before parsing: {len(ciphertext)}')
-        
+        # print(f'len of ciphertext before parsing: {len(ciphertext)}')
+        print(ciphertext)
+
+
         iv = ciphertext[:16]
         tag = ciphertext[-16:]
         print("-------------------------")
-        print(ciphertext)
-        print(iv)
+        print(f"DecryptAndVerifyMessage: ciphertext = {ciphertext}")
+        print(f"DecryptAndVerifyMessage: iv = {iv}")
         print("-------------------------")
         print("-------------------------")
-        print(len(ciphertext))
-        print(len(iv))
-        print(type(iv))
-        print(len(tag))
+        print(f"DecryptAndVerifyMessage: ciphertext length = {len(ciphertext)}")
+        print(f"DecryptAndVerifyMessage: iv length = {len(iv)}")
+        print(f"DecryptAndVerifyMessage: iv type = {type(iv)}")
+        print(f"DecryptAndVerifyMessage: tag length = {len(tag)}")
         print(len(ciphertext[16:len(ciphertext)-16]))
         print("-------------------------")
         decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
-        print('line 171')
         
-        plaintext = decryptor.update(ciphertext[16:len(ciphertext)-16]) + decryptor.finalize()
+        plaintext = decryptor.update(ciphertext[16:]) + decryptor.finalize()
         # plaintext = plaintext.decode('utf-8').strip('0')
         print("------p==------")
         print(plaintext)
@@ -220,14 +222,15 @@ class Protocol:
 # Main logic
 if __name__ == '__main__':
     # g=3, p=5, K=os.urandom(16) 
-    prot = Protocol("Client", os.urandom(16), 3, 5)
-    init_msg = prot.GetProtocolInitiationMessage()
+    protClient = Protocol("Client", os.urandom(16), 3, 5)
+    protServer = Protocol("Server", os.urandom(16), 3, 5)
+    init_msg = protClient.GetProtocolInitiationMessage()
     print(f"Initial message = {init_msg}")
-    check = prot.IsMessagePartOfProtocol(init_msg)
+    check = protClient.IsMessagePartOfProtocol(init_msg)
     print(f"check initial message = {check}")
-    msg_2 = prot.ProcessReceivedProtocolMessage(init_msg)
+    msg_2 = protServer.ProcessReceivedProtocolMessage(init_msg)
     print(f"Message 2 = {msg_2}")
-    msg_3 = prot.ProcessReceivedProtocolMessage(msg_2)
+    msg_3 = protClient.ProcessReceivedProtocolMessage(msg_2)
     print(f"Message 3 = {msg_3}\n")
     #TODO test with two instances of the program running
 
