@@ -47,65 +47,64 @@ class Protocol:
 
     # Processing protocol message
     def ProcessReceivedProtocolMessage(self, message):
-        jmessage = json.loads(message)
-        match jmessage["handshake"]: # message counter      
-            case 1:
-                # Received: [“other_name”, other_nonce, 1] 
-                self._otherName = jmessage["name"]
-                self._otherNonce = jmessage["nonce"]
-                print("\n PROCESSING HANDSHAKE MSG 1 \n")
+        try:
+            jmessage = json.loads(message)
+            match jmessage["handshake"]: # message counter      
+                case 1:
+                    # Received: [“other_name”, other_nonce, 1] 
+                    self._otherName = jmessage["name"]
+                    self._otherNonce = jmessage["nonce"]
+                    print("\n PROCESSING HANDSHAKE MSG 1 \n")
 
-                # send next msg, increment message_counter
-                self._myNonce = secrets.randbits(32)
-                encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
+                    # send next msg, increment message_counter
+                    self._myNonce = secrets.randbits(32)
+                    encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
+                    
+                    next_message = '{ "nonce":' + str(self._myNonce) + ', "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(2) + '}'
+                    self._nextExpectedHandshakeMessage = 3
+                    return next_message
+                    
+                case 2: # counter = 2
+                    # Received: other_nonce, E("other_name", my_nonce, otherDH, K), 2
+                    self._otherNonce = jmessage["nonce"]
+                    cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
+                    print("\n PROCESSING HANDSHAKE MSG 2 \n")
+
+                    plaintext = self.DecryptAndVerifyMessage(cipher_text)
+                    plaintext = plaintext.split(", ")
+                    self._otherName = plaintext[0]
+                    my_nonce = int(plaintext[1])
+                    self._otherDH = int(plaintext[2])
+
+                    assert my_nonce == self._myNonce
+                    encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
+                    next_message = '{ "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(3) + '}'
+
+                    self.SetSessionKey()
+                    self._nextExpectedHandshakeMessage = 4
+                    return next_message
+                    
+                case 3:
+                    # Received : E(“other_name”, my_nonce, other_DH, K), 3
+                    cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
+                    print("\n PROCESSING HANDSHAKE MSG 3 \n")
+                    plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
+                    other_name = plaintext[0]
+                    my_nonce = int(plaintext[1])
+                    self._otherDH = int(plaintext[2])
+
+                    assert other_name == self._otherName
+                    assert my_nonce == self._myNonce
+
+                    self.SetSessionKey()
+                    self._nextExpectedHandshakeMessage = 5       
+                    next_message = "done"
+                    return next_message
                 
-                next_message = '{ "nonce":' + str(self._myNonce) + ', "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(2) + '}'
-                self._nextExpectedHandshakeMessage = 3
-                return next_message
-                
-            case 2: # counter = 2
-                # Received: other_nonce, E("other_name", my_nonce, otherDH, K), 2
-                self._otherNonce = jmessage["nonce"]
-                cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
-                print("\n PROCESSING HANDSHAKE MSG 2 \n")
-
-                plaintext = self.DecryptAndVerifyMessage(cipher_text)
-                plaintext = plaintext.split(", ")
-                self._otherName = plaintext[0]
-                my_nonce = int(plaintext[1])
-                self._otherDH = int(plaintext[2])
-
-                assert my_nonce == self._myNonce
-                encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
-                next_message = '{ "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(3) + '}'
-
-                self.SetSessionKey()
-                self._nextExpectedHandshakeMessage = 4
-                return next_message
-                
-            case 3:
-                # Received : E(“other_name”, my_nonce, other_DH, K), 3
-                cipher_text = b64.b64decode(bytes(str(jmessage["cipher_text"]).encode()))
-                print("\n PROCESSING HANDSHAKE MSG 3 \n")
-                plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
-                other_name = plaintext[0]
-                my_nonce = int(plaintext[1])
-                self._otherDH = int(plaintext[2])
-
-                assert other_name == self._otherName
-                assert my_nonce == self._myNonce
-
-                self.SetSessionKey()
-                self._nextExpectedHandshakeMessage = 5       
-                next_message = "done"
-                return next_message
-            
-            case 4:
-                return self.DecryptAndVerifyMessage(message)
-            
-            case _:
-                # TODO: throw an exception, message is not part of protocol
-                pass
+                case _:
+                    raise Exception("Message is not a part of the handshake protocol.")
+        except:
+            raise Exception("Message is not a part of the handshake protocol. Cannot be parsed as JSON.")
 
 
     # Setting the key for the current session
