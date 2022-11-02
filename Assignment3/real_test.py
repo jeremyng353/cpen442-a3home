@@ -1,9 +1,19 @@
 from protocol import Protocol
 import os
-import base64 as b64
-test = Protocol("Alice", os.urandom(16), 7, 15)
-plaintext = "hello"
-print(test.DecryptAndVerifyMessage(test.EncryptAndProtectMessage(plaintext)))
+# g=3, p=5, K=os.urandom(16) 
+K = os.urandom(16)
+protClient = Protocol("Client", K, 3, 5)
+protServer = Protocol("Server", K, 3, 5)
+init_msg = protClient.GetProtocolInitiationMessage()
+print(f"Initial message = {init_msg}")
+check = protClient.IsMessagePartOfProtocol(init_msg)
+print(f"check initial message = {check}")
+msg_2 = protServer.ProcessReceivedProtocolMessage(init_msg)
+print(f"Message 2 = {msg_2}")
+msg_3 = protClient.ProcessReceivedProtocolMessage(msg_2)
+print(f"Message 3 = {msg_3}\n")
+msg_4 = protServer.ProcessReceivedProtocolMessage(msg_3)
+print(f"Message 4 = {msg_4}\n")
 # print(b64.decodebytes(test.EncryptAndProtectMessage(plaintext)))
 # bytetext = None
 # print(b64.decode(test.EncryptAndProtectMessage(plaintext), bytetext))
