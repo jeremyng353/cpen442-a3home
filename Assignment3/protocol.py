@@ -180,7 +180,7 @@ class Protocol:
         print(f"DecryptAndVerifyMessage: iv length = {len(iv)}")
         print(f"DecryptAndVerifyMessage: iv type = {type(iv)}")
         print(f"DecryptAndVerifyMessage: tag length = {len(tag)}")
-        print(len(ciphertext[16:len(ciphertext)-16]))
+        # print(len(ciphertext[16:len(ciphertext)-16]))
         print("-------------------------")
         decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
         
@@ -222,8 +222,9 @@ class Protocol:
 # Main logic
 if __name__ == '__main__':
     # g=3, p=5, K=os.urandom(16) 
-    protClient = Protocol("Client", os.urandom(16), 3, 5)
-    protServer = Protocol("Server", os.urandom(16), 3, 5)
+    K = os.urandom(16)
+    protClient = Protocol("Client", K, 3, 5)
+    protServer = Protocol("Server", K, 3, 5)
     init_msg = protClient.GetProtocolInitiationMessage()
     print(f"Initial message = {init_msg}")
     check = protClient.IsMessagePartOfProtocol(init_msg)
