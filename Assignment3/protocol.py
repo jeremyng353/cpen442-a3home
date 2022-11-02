@@ -26,6 +26,8 @@ class Protocol:
         self._otherDH = None
         pass
 
+    def SetMyName(self, name):
+        self.name = name
 
     # Creating the initial message of your protocol (to be send to the other party to bootstrap the protocol)
     def GetProtocolInitiationMessage(self):
