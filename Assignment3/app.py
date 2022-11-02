@@ -53,6 +53,7 @@ class Assignment3VPN:
         # Creating a protocol object
         # self.prtcl = Protocol()
         symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
+        # TODO: change myExponent
         self.prtcl = Protocol("Name", symmetric_key, 23, 17)
      
     # Distructor     
@@ -212,12 +213,34 @@ class Assignment3VPN:
 
     # Helper function to convert a list of strings to a byte array before sending
     def _sendHandshakeMessage(self, handshake_list):
+        # Rb, E("Server", Ra, DH), 3
+        # Rb, 3     E("Server", Ra, DH)
+        # bytes(Rb, 3), E("Server", Ra, DH)
+        
+        '''
+        if handshake_list[-1] == 2 or handshake_list[-1] == 3:
+            # assuming the encrypted text is handshake_list[0]
+            byteString = b''
+            for i, x in enumerate(handshake_list):
+                if isinstance(x,int):
+                    x = str(x)
+                    
+                x = x.encode()
+                byteString += x 
+        
+            byteString = handshake_list[0] + b'1111' + 
+        ''' 
+        
         for i, x in enumerate(handshake_list):
             if isinstance(x,int):
                 x = str(x)
+                
+            if isinstance(x, str):
+                x = x.encode()
             handshake_list[i] = x
         handshake_list = "".join(handshake_list)
-            
+        print("sending handshake message, line 220 in app.py")
+        print(f'handshake_list: {handshake_list}')
         self.conn.send(handshake_list.encode())
 
     # Clear the logs window

@@ -22,7 +22,7 @@ class Protocol:
         self._otherNonce = None
         self._myName = name
         self._otherName = None
-        self._myExponent = 3 # currently using 3 for testing, replace with secrets.randbits(8)
+        self._myExponent = 2 # currently using 2 for testing, replace with secrets.randbits(8)
         self._myDH = (self._g ** self._myExponent) % self._p
         self._otherDH = None
         pass
@@ -50,7 +50,6 @@ class Protocol:
     # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
         # TODO: IMPORTANT, app.py calls this function with a string as the input
-        print("processreceived called")
         match self._nextExpectedHandshakeMessage: # message counter      
             case 1:
                 # Received: [“other_name”, other_nonce, 1] 
@@ -67,8 +66,6 @@ class Protocol:
                 next_message = [self._myNonce, self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 2]
                 # next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
                 self._nextExpectedHandshakeMessage = 3
-                print(str(next_message))
-                print(next_message)
                 return next_message
                 
             case 2: # counter = 2
@@ -76,13 +73,10 @@ class Protocol:
                 self._otherNonce = message[0]
                 cipher_text = message[1]
                 print("\n PROCESSING HANDSHAKE MSG 2 \n")
-                print(message)   
-                '''
-                    TODO
-                    there's something wrong with message[1], i think its due to message being a string instead of being bytes
-                    however, aren't messages technically sent as a bitstream anyways
-                '''  
-                plaintext = self.DecryptAndVerifyMessage(cipher_text).split(", ")
+
+                plaintext = self.DecryptAndVerifyMessage(cipher_text)
+                print(f'plaintext: {plaintext}')
+                plaintext = plaintext.split(", ")
                 self._otherName = plaintext[0]
                 my_nonce = int(plaintext[1])
                 self._otherDH = int(plaintext[2])
@@ -102,7 +96,6 @@ class Protocol:
 
                 self.SetSessionKey()
                 self._nextExpectedHandshakeMessage = 4
-                print(str(next_message))
                 return next_message
                 
             case 3:
@@ -166,15 +159,20 @@ class Protocol:
         # TODO: use key because it can be DH, symmetric_key
         print(f'type of ciphertext before parsing: {type(ciphertext)}')
         # print(f'len of ciphertext before parsing: {len(ciphertext)}')
-        print(ciphertext)
 
+        # ciphertext = iv + E(text) + tag
+        
+        # if center of E(text) is changed, then the MAC gets changed, so you need a copy of the MAC to compare changed MAC and original MAC
+        # ciphertext = E(text) + tag
+        # encrypted text = ciphertext[0:-16]
+        # tag = ciphertext[-16:]
+        # plaintext = D(encrypted text)
+        # E(plaintext), and the
+        # re-ciphertext = E(text) --> compare last block with the tag
 
         iv = ciphertext[:16]
         tag = ciphertext[-16:]
-        print("-------------------------")
-        print(f"DecryptAndVerifyMessage: ciphertext = {ciphertext}")
-        print(f"DecryptAndVerifyMessage: iv = {iv}")
-        print("-------------------------")
+        encrypted_text = ciphertext[16:-16]
         print("-------------------------")
         print(f"DecryptAndVerifyMessage: ciphertext length = {len(ciphertext)}")
         print(f"DecryptAndVerifyMessage: iv length = {len(iv)}")
@@ -184,20 +182,16 @@ class Protocol:
         print("-------------------------")
         decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
         
-        plaintext = decryptor.update(ciphertext[16:]) + decryptor.finalize()
+        plaintext = decryptor.update(encrypted_text) + decryptor.finalize()
         # plaintext = plaintext.decode('utf-8').strip('0')
         print("------p==------")
-        print(plaintext)
+        print(f'plaintext before decoding: {plaintext}')
         plaintext = plaintext.decode('utf-8').strip('0')
         print("PLAINTEXT")
         print(plaintext)
         print("ENDPLAINTEXT")
         
-        tag_new = self._Encrypt(plaintext, self._symmetricKey, iv)[-16:]
-        if tag != tag_new:
-            print(tag)
-            print(tag_new)
-            print(plaintext)
+        if tag != encrypted_text[-16:]:
             return "ERROR: integrity check failed"
         
         try: 
@@ -207,15 +201,12 @@ class Protocol:
 
     def _Encrypt(self, plaintext, key, iv):
         encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
-        print(type(plaintext))
         padded_data = bytes(plaintext, 'utf-8') + (16 - len(bytes(plaintext, 'utf-8')) % 16) * b'0'
         
         # append iv: https://stackoverflow.com/questions/44217923/how-does-aes-decrypt-with-a-different-iv
         # TODO: needs to return as a string
-        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-        print(ciphertext)
-        
-        return ciphertext
+        ciphertext = encryptor.update(padded_data) + encryptor.finalize()        
+        return iv + ciphertext + ciphertext[-16:]
         # return iv + encryptor.update(padded_data) + encryptor.finalize()
 
 
@@ -233,5 +224,6 @@ if __name__ == '__main__':
     print(f"Message 2 = {msg_2}")
     msg_3 = protClient.ProcessReceivedProtocolMessage(msg_2)
     print(f"Message 3 = {msg_3}\n")
-    #TODO test with two instances of the program running
+    msg_4 = protServer.ProcessReceivedProtocolMessage(msg_3)
+    print(f"Message 4 = {msg_4}\n")
 
