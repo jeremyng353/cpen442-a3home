@@ -52,9 +52,7 @@ class Assignment3VPN:
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
         
         # Creating a protocol object
-        # self.prtcl = Protocol()
         symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
-        # TODO: change myExponent
         self.prtcl = Protocol("Name", symmetric_key, 23, 17)
      
     # Distructor     
@@ -154,27 +152,17 @@ class Assignment3VPN:
                     break
 
                 # Checking if the received message is part of your protocol
-                # TODO: MODIFY THE INPUT ARGUMENTS AND LOGIC IF NECESSARY
-                print(f'messageCounter: {self.prtcl._nextExpectedHandshakeMessage}')
                 if self.prtcl.IsMessagePartOfProtocol(cipher_text):
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
                     # Processing the protocol message
-                    # TODO: bytearray --> list
-                    print(cipher_text.decode('utf-8'))
-                    print("line 161, received a message part of the protocol in app.py")
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
-                    print(f'line 163 app.py, next message to send: {sendMessage}')
-                    # self.SendMessage(sendMessage)
                     if self.prtcl._nextExpectedHandshakeMessage != 5:
                         self._sendHandshakeMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
                 else:
-                    print("app.py line 172")
                     plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
-                    print("app.py line 165")
-                    # Changed from plaintext.decode() --> plaintext
                     self._AppendMessage("Other: {}".format(plain_text))
                     
             except Exception as e:
@@ -186,7 +174,6 @@ class Assignment3VPN:
     def _SendMessage(self, message):
         plain_text = message
         cipher_text = self.prtcl.EncryptAndProtectMessage(plain_text)
-        # Changed from ciphertext.encode() --> ciphertext
         self.conn.send(cipher_text)
             
 
@@ -195,10 +182,7 @@ class Assignment3VPN:
         # disable the button to prevent repeated clicks
         self.secureButton["state"] = "disabled"
 
-        # TODO: THIS IS WHERE YOU SHOULD IMPLEMENT THE START OF YOUR MUTUAL AUTHENTICATION AND KEY ESTABLISHMENT PROTOCOL, MODIFY AS YOU SEEM FIT
         init_message = self.prtcl.GetProtocolInitiationMessage()
-        print(init_message) # list of strings and integers
-        # self._SendMessage(init_message)
         self._sendHandshakeMessage(init_message)
 
 
@@ -221,20 +205,6 @@ class Assignment3VPN:
         # Rb, E("Server", Ra, DH), 3
         # Rb, 3     E("Server", Ra, DH)
         # bytes(Rb, 3), E("Server", Ra, DH)
-        
-        '''
-        if handshake_list[-1] == 2 or handshake_list[-1] == 3:
-            # assuming the encrypted text is handshake_list[0]
-            byteString = b''
-            for i, x in enumerate(handshake_list):
-                if isinstance(x,int):
-                    x = str(x)
-                    
-                x = x.encode()
-                byteString += x 
-        
-            byteString = handshake_list[0] + b'1111' + 
-        ''' 
 
         self.conn.send(handshake_list.encode())
 

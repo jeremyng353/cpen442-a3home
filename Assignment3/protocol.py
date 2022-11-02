@@ -7,8 +7,6 @@ import base64 as b64
 from cryptography.hazmat.primitives import padding
 import json
 
-# from Assignment3.test import DecryptAndVerifyMessage
-
 class Protocol:
     # Initializer (Called from app.py)
     def __init__(self, name, symmetricKey, g, p):
@@ -36,8 +34,6 @@ class Protocol:
         self._myNonce = nonce    
         self._nextExpectedHandshakeMessage = 2
         return '{ "name":"' + self._myName + '", "nonce":' + str(self._myNonce) + ', "handshake":' + str(1) +'}'
-        # return [self._myName, self._myNonce, 1]
-        # return f"{self._myName}, {self._myNonce}, 1"
 
 
     # Checking if a received message is part of your protocol (called from app.py)
@@ -46,10 +42,7 @@ class Protocol:
 
 
     # Processing protocol message
-    # TODO: IMPLMENET THE LOGIC (CALL SetSessionKey ONCE YOU HAVE THE KEY ESTABLISHED)
-    # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
-        # TODO: IMPORTANT, app.py calls this function with a string as the input
         jmessage = json.loads(message)
         match jmessage["handshake"]: # message counter      
             case 1:
@@ -57,12 +50,9 @@ class Protocol:
                 self._otherName = jmessage["name"]
                 self._otherNonce = jmessage["nonce"]
                 print("\n PROCESSING HANDSHAKE MSG 1 \n")
-                print(f"Other name = {self._otherName}")
-                print(f"Other nonce = {self._otherNonce}")
 
                 # send next msg, increment message_counter
                 self._myNonce = secrets.randbits(32)
-                print(f"My nonce generated = {self._myNonce}")
                 encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
                 
                 next_message = '{ "nonce":' + str(self._myNonce) + ', "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(2) + '}'
@@ -81,16 +71,7 @@ class Protocol:
                 my_nonce = int(plaintext[1])
                 self._otherDH = int(plaintext[2])
 
-                print(f"other name = {self._otherName}")
-                print(f"My nonce, according to received message = {my_nonce}")
-                print(f"My actual nonce = {self._myNonce}")
-                print(f"Other nonce = {self._otherNonce}")
-                print(f"other DH = {self._otherDH}")
-
                 assert my_nonce == self._myNonce
-
-                # TODO: encryptandprotectmessage is currently byte-like, not string
-                # Send E(“my_name”, other_nonce, my_DH, K), 3
                 encrypted = self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')
                 next_message = '{ "cipher_text":"' + str(b64.b64encode(encrypted).decode()) + '", "handshake":' + str(3) + '}'
 
@@ -107,12 +88,6 @@ class Protocol:
                 my_nonce = int(plaintext[1])
                 self._otherDH = int(plaintext[2])
 
-                print(f"Other name recieved in encrypted message = {other_name}")
-                print(f"actual other name = {self._otherName}")
-                print(f"my nonce recieved in encrypted message= {my_nonce}")
-                print(f"my actual nonce = {self._myNonce}")
-                print(f"other DH = {self._otherDH}")
-
                 assert other_name == self._otherName
                 assert my_nonce == self._myNonce
 
@@ -122,7 +97,6 @@ class Protocol:
                 return next_message
             
             case 4:
-                # IMPORTANT: treat message as str here?
                 return self.DecryptAndVerifyMessage(message)
             
             case _:
@@ -133,41 +107,23 @@ class Protocol:
     # Setting the key for the current session
     def SetSessionKey(self):
         self._sessionKey = ((self._otherDH ** self._myExponent) % self._p).to_bytes(16, 'big')
-        print(f'sessionKey: {self._sessionKey}')
         pass
 
     # Encrypting messages
-    # TODO: IMPLEMENT ENCRYPTION WITH THE SESSION KEY (ALSO INCLUDE ANY NECESSARY INFO IN THE ENCRYPTED MESSAGE FOR INTEGRITY PROTECTION)
-    # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
     def EncryptAndProtectMessage(self, plaintext):
-        # TODO: use key as key can be DH, shared secret symmetric_key
         iv = os.urandom(16)
         encrypted = None
         if self._sessionKey:
             encrypted = self._Encrypt(plaintext, self._sessionKey, iv)
         else: 
             encrypted = self._Encrypt(plaintext, self._symmetricKey, iv)       
-        print(f"type of the encrypted message = {type(encrypted)}")
-        print(f'length of encrypted: {len(encrypted)}')
-        print(f'length of str(encrypted): {len(str(encrypted))}')
-        print(f'len of bytes(str(encrypted)): {len(bytes(str(encrypted), "utf-8"))}')
         return encrypted
 
     # Decrypting and verifying messages, specifically for processing 2nd and 3rd messages in handshake.
-    # TODO: IMPLEMENT DECRYPTION AND INTEGRITY CHECK WITH THE SESSION KEY
-    # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
     def DecryptAndVerifyMessage(self, ciphertext):
-        # TODO: use key because it can be DH, symmetric_key
         iv = ciphertext[:16]
         tag = ciphertext[-16:]
         encrypted_text = ciphertext[16:-16]
-        print("-------------------------")
-        print(f"DecryptAndVerifyMessage: ciphertext length = {len(ciphertext)}")
-        print(f"DecryptAndVerifyMessage: iv length = {len(iv)}")
-        print(f"DecryptAndVerifyMessage: iv type = {type(iv)}")
-        print(f"DecryptAndVerifyMessage: tag length = {len(tag)}")
-        # print(len(ciphertext[16:len(ciphertext)-16]))
-        print("-------------------------")
         decryptor = None
         if self._sessionKey:
             decryptor = Cipher(algorithms.AES(self._sessionKey), modes.CBC(iv)).decryptor()
@@ -189,7 +145,5 @@ class Protocol:
         padded_data = bytes(plaintext, 'utf-8') + (16 - len(bytes(plaintext, 'utf-8')) % 16) * b'0'
         
         # append iv: https://stackoverflow.com/questions/44217923/how-does-aes-decrypt-with-a-different-iv
-        # TODO: needs to return as a string
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()        
         return iv + ciphertext + ciphertext[-16:]
-        # return iv + encryptor.update(padded_data) + encryptor.finalize()
