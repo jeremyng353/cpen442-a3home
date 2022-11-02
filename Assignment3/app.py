@@ -46,14 +46,17 @@ class Assignment3VPN:
         self.s = None
         self.conn = None
         self.addr = None
+        self.doEncrypt = False
         
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
         
         # Creating a protocol object
+        # TODO: move this to create connection so the symmetric_key can be dynamically set by self.sharedSecret
         symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
         self.prtcl = Protocol("Name", symmetric_key, 23, 17)
+
      
     # Distructor     
     def __del__(self):
@@ -162,7 +165,11 @@ class Assignment3VPN:
 
                 # Otherwise, decrypting and showing the messaage
                 else:
-                    plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
+                    plain_text = cipher_text
+                    if self.doEncrypt:
+                        plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
+                    else:
+                        plain_text = cipher_text.decode('utf-8')
                     self._AppendMessage("Other: {}".format(plain_text))
                     
             except Exception as e:
@@ -173,7 +180,11 @@ class Assignment3VPN:
     # Send data to the other party
     def _SendMessage(self, message):
         plain_text = message
-        cipher_text = self.prtcl.EncryptAndProtectMessage(plain_text)
+        cipher_text = plain_text
+        if self.doEncrypt:
+            cipher_text = self.prtcl.EncryptAndProtectMessage(plain_text)
+        else:
+            cipher_text = plain_text.encode()
         self.conn.send(cipher_text)
             
 
@@ -181,7 +192,7 @@ class Assignment3VPN:
     def SecureConnection(self):
         # disable the button to prevent repeated clicks
         self.secureButton["state"] = "disabled"
-
+        self.doEncrypt = True
         init_message = self.prtcl.GetProtocolInitiationMessage()
         self._sendHandshakeMessage(init_message)
 
@@ -191,6 +202,7 @@ class Assignment3VPN:
         text = self.textMessage.get()
         if  text != "" and self.s is not None:
             try:
+                # TODO: input sanitation
                 self._SendMessage(text)
                 self._AppendMessage("You: {}".format(text))
                 self.textMessage.set("")
