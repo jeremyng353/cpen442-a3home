@@ -19,7 +19,7 @@ class Protocol:
         self._otherNonce = None
         self._myName = name
         self._otherName = None
-        self._myExponent = 2 # currently using 2 for testing, replace with secrets.randbits(8)
+        self._myExponent = secrets.randbits(8)
         self._myDH = (self._g ** self._myExponent) % self._p
         self._otherDH = None
         pass
@@ -38,7 +38,8 @@ class Protocol:
 
     # Checking if a received message is part of your protocol (called from app.py)
     def IsMessagePartOfProtocol(self, message):
-        return self._nextExpectedHandshakeMessage <= 3
+        jmessage = json.loads(message)
+        return self._nextExpectedHandshakeMessage <= 3 and jmessage["handshake"] == self._nextExpectedHandshakeMessage
 
 
     # Processing protocol message
@@ -107,6 +108,7 @@ class Protocol:
     # Setting the key for the current session
     def SetSessionKey(self):
         self._sessionKey = ((self._otherDH ** self._myExponent) % self._p).to_bytes(16, 'big')
+        self._myExponent = None
         pass
 
     # Encrypting messages
