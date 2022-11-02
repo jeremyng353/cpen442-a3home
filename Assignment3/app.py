@@ -154,6 +154,7 @@ class Assignment3VPN:
 
                 # Checking if the received message is part of your protocol
                 # TODO: MODIFY THE INPUT ARGUMENTS AND LOGIC IF NECESSARY
+                print(f'messageCounter: {self.prtcl._nextExpectedHandshakeMessage}')
                 if self.prtcl.IsMessagePartOfProtocol(cipher_text):
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
@@ -164,10 +165,12 @@ class Assignment3VPN:
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     print(f'line 163 app.py, next message to send: {sendMessage}')
                     # self.SendMessage(sendMessage)
-                    self._sendHandshakeMessage(sendMessage)
+                    if self.prtcl._nextExpectedHandshakeMessage != 4:
+                        self._sendHandshakeMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
                 else:
+                    print("app.py line 172")
                     plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
                     print("app.py line 165")
                     # Changed from plaintext.decode() --> plaintext
