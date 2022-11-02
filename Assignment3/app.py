@@ -46,7 +46,6 @@ class Assignment3VPN:
         self.s = None
         self.conn = None
         self.addr = None
-        self.doEncrypt = False
         
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
@@ -148,7 +147,7 @@ class Assignment3VPN:
             try:
                 # Receiving all the data
                 cipher_text = self.conn.recv(4096)
-
+                plain_text = None
                 # Check if socket is still open
                 if cipher_text == None or len(cipher_text) == 0:
                     self._AppendLog("RECEIVER_THREAD: Received empty message")
@@ -162,15 +161,14 @@ class Assignment3VPN:
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     if self.prtcl._nextExpectedHandshakeMessage != 5:
                         self._sendHandshakeMessage(sendMessage)
-
                 # Otherwise, decrypting and showing the messaage
-                else:
-                    plain_text = cipher_text
-                    if self.doEncrypt:
+                else: 
+                    if self.secureButton["state"] == "disabled":
                         plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
+                        self._AppendMessage("Other: {}".format(plain_text))
                     else:
-                        plain_text = cipher_text.decode('utf-8')
-                    self._AppendMessage("Other: {}".format(plain_text))
+                        plain_text = cipher_text.decode()
+                        self._AppendMessage("Other: {}".format(plain_text))
                     
             except Exception as e:
                 self._AppendLog("RECEIVER_THREAD: Error receiving data: {}".format(str(e)))
@@ -181,7 +179,7 @@ class Assignment3VPN:
     def _SendMessage(self, message):
         plain_text = message
         cipher_text = plain_text
-        if self.doEncrypt:
+        if self.secureButton["state"] == "disabled":
             cipher_text = self.prtcl.EncryptAndProtectMessage(plain_text)
         else:
             cipher_text = plain_text.encode()
@@ -192,7 +190,6 @@ class Assignment3VPN:
     def SecureConnection(self):
         # disable the button to prevent repeated clicks
         self.secureButton["state"] = "disabled"
-        self.doEncrypt = True
         init_message = self.prtcl.GetProtocolInitiationMessage()
         self._sendHandshakeMessage(init_message)
 
