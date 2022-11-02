@@ -126,7 +126,7 @@ class Protocol:
                 # TODO: not sure if messageCounter should be reset to 1 or another number to indicate we're sending data now
                 self._nextExpectedHandshakeMessage = 4       
                 # TODO: send message with DH key  
-                next_message = "encrypted data"
+                next_message = "done"
                 return next_message
             
             case 4:
