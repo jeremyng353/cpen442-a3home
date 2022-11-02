@@ -156,13 +156,20 @@ class Assignment3VPN:
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
                     # Processing the protocol message
-                    sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text)
-                    self.SendMessage(sendMessage)
+                    # TODO: bytearray --> list
+                    print(list(cipher_text.decode('utf-8')))
+                    print("line 161, received a message part of the protocol in app.py")
+                    sendMessage = self.prtcl.ProcessReceivedProtocolMessage(list(cipher_text.decode('utf-8')))
+                    print(f'line 163 app.py, next message to send: {sendMessage}')
+                    # self.SendMessage(sendMessage)
+                    self._sendHandshakeMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
                 else:
                     plain_text = self.prtcl.DecryptAndVerifyMessage(cipher_text)
-                    self._AppendMessage("Other: {}".format(plain_text.decode()))
+                    print("app.py line 165")
+                    # Changed from plaintext.decode() --> plaintext
+                    self._AppendMessage("Other: {}".format(plain_text))
                     
             except Exception as e:
                 self._AppendLog("RECEIVER_THREAD: Error receiving data: {}".format(str(e)))
@@ -173,7 +180,8 @@ class Assignment3VPN:
     def _SendMessage(self, message):
         plain_text = message
         cipher_text = self.prtcl.EncryptAndProtectMessage(plain_text)
-        self.conn.send(cipher_text.encode())
+        # Changed from ciphertext.encode() --> ciphertext
+        self.conn.send(cipher_text)
             
 
     # Secure connection with mutual authentication and key establishment
@@ -183,7 +191,9 @@ class Assignment3VPN:
 
         # TODO: THIS IS WHERE YOU SHOULD IMPLEMENT THE START OF YOUR MUTUAL AUTHENTICATION AND KEY ESTABLISHMENT PROTOCOL, MODIFY AS YOU SEEM FIT
         init_message = self.prtcl.GetProtocolInitiationMessage()
-        self._SendMessage(init_message)
+        print(init_message) # list of strings and integers
+        # self._SendMessage(init_message)
+        self._sendHandshakeMessage(init_message)
 
 
     # Called when SendMessage button is clicked
@@ -200,6 +210,15 @@ class Assignment3VPN:
         else:
             messagebox.showerror("Networking", "Either the message is empty or the connection is not established.")
 
+    # Helper function to convert a list of strings to a byte array before sending
+    def _sendHandshakeMessage(self, handshake_list):
+        for i, x in enumerate(handshake_list):
+            if isinstance(x,int):
+                x = str(x)
+            handshake_list[i] = x
+        handshake_list = "".join(handshake_list)
+            
+        self.conn.send(handshake_list.encode())
 
     # Clear the logs window
     def ClearLogs(self):

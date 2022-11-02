@@ -33,7 +33,7 @@ class Protocol:
         # Send Message: "my_name", my_nonce, 1
         nonce = secrets.randbits(32)
         self._myNonce = nonce    
-        self._messageCounter = 1
+        self._messageCounter = 2
         return [self._myName, self._myNonce, 1]
         # return f"{self._myName}, {self._myNonce}, 1"
 
@@ -41,14 +41,17 @@ class Protocol:
     # Checking if a received message is part of your protocol (called from app.py)
     def IsMessagePartOfProtocol(self, message):
         # check message_counter
-        return message[-1] == self._messageCounter
+        # return message[-1] == self._messageCounter
+        return self._messageCounter <= 3
 
 
     # Processing protocol message
     # TODO: IMPLMENET THE LOGIC (CALL SetSessionKey ONCE YOU HAVE THE KEY ESTABLISHED)
     # THROW EXCEPTION IF AUTHENTICATION FAILS
     def ProcessReceivedProtocolMessage(self, message):
-        match message[-1]: # message counter      
+        # TODO: IMPORTANT, app.py calls this function with a string as the input
+        print("processreceived called")
+        match self._messageCounter: # message counter      
             case 1:
                 # Received: [“other_name”, other_nonce, 1] 
                 self._otherName = message[0]
@@ -64,6 +67,7 @@ class Protocol:
                 next_message = [self._myNonce, self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}'), 2]
                 # next_message = f"{self._myNonce}, {self.EncryptAndProtectMessage(f'{self._myName}, {self._otherNonce}, {self._myDH}')}, 2"
                 self._messageCounter = 3
+                print(str(next_message))
                 return next_message
                 
             case 2: # counter = 2
@@ -97,6 +101,7 @@ class Protocol:
 
                 self.SetSessionKey()
                 self._messageCounter = 4
+                print(str(next_message))
                 return next_message
                 
             case 3:
@@ -125,16 +130,17 @@ class Protocol:
                 next_message = "encrypted data"
                 return next_message
             
+            case 4:
+                # IMPORTANT: treat message as str here?
+                return self.DecryptAndVerifyMessage(message)
+            
             case _:
                 # TODO: throw an exception, message is not part of protocol
                 pass
 
 
     # Setting the key for the current session
-    # TODO: Diffie Helman - Sam
     def SetSessionKey(self):
-        # tmp = partialkey ** self._privateKey
-        # self._fullKey = tmp % self._p
         self._sessionKey = (self._otherDH ** self._myExponent) % self._p
         pass
 
@@ -147,6 +153,9 @@ class Protocol:
         iv = os.urandom(16)      
         encrypted = self._Encrypt(plaintext, self._symmetricKey, iv)
         print(f"type of the encrypted message = {type(encrypted)}")
+        print(f'length of encrypted: {len(encrypted)}')
+        print(f'length of str(encrypted): {len(str(encrypted))}')
+        print(f'len of bytes(str(encrypted)): {len(bytes(str(encrypted), "utf-8"))}')
         return encrypted
 
     # Decrypting and verifying messages, specifically for processing 2nd and 3rd messages in handshake.
@@ -154,23 +163,33 @@ class Protocol:
     # RETURN AN ERROR MESSAGE IF INTEGRITY VERIFICATION OR AUTHENTICATION FAILS
     def DecryptAndVerifyMessage(self, ciphertext):
         # TODO: use key because it can be DH, symmetric_key
-        # ciphertext = str(ciphertext).encode()
-        print(type(ciphertext))
+        print(f'type of ciphertext before parsing: {type(ciphertext)}')
+        print(f'len of ciphertext before parsing: {len(ciphertext)}')
         
-        iv = ciphertext[0:16]
+        iv = ciphertext[:16]
         tag = ciphertext[-16:]
         print("-------------------------")
         print(ciphertext)
         print(iv)
         print("-------------------------")
+        print("-------------------------")
+        print(len(ciphertext))
+        print(len(iv))
+        print(type(iv))
+        print(len(tag))
+        print(len(ciphertext[16:len(ciphertext)-16]))
+        print("-------------------------")
         decryptor = Cipher(algorithms.AES(self._symmetricKey), modes.CBC(iv)).decryptor()
-        # unpadder = padding.PKCS7(128).unpadder()
-        # don't decrypt first 16 and last 16 bytes since they're iv and MAC
+        print('line 171')
+        
         plaintext = decryptor.update(ciphertext[16:len(ciphertext)-16]) + decryptor.finalize()
-        # plaintext = unpadder.update(plaintext) + unpadder.finalize()
+        # plaintext = plaintext.decode('utf-8').strip('0')
+        print("------p==------")
+        print(plaintext)
         plaintext = plaintext.decode('utf-8').strip('0')
         print("PLAINTEXT")
         print(plaintext)
+        print("ENDPLAINTEXT")
         
         tag_new = self._Encrypt(plaintext, self._symmetricKey, iv)[-16:]
         if tag != tag_new:
@@ -186,22 +205,14 @@ class Protocol:
 
     def _Encrypt(self, plaintext, key, iv):
         encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
-        # padder = padding.PKCS7(128).padder()
-        # padded_data = padder.update(bytes(plaintext, 'utf-8')) + padder.finalize()
+        print(type(plaintext))
         padded_data = bytes(plaintext, 'utf-8') + (16 - len(bytes(plaintext, 'utf-8')) % 16) * b'0'
         
-        
-        
-        # ciphertext is in bytes
-        # encryptor.update() returns as bytes
-        # encryptor.finalize() returns the results of processing the final block as bytes
         # append iv: https://stackoverflow.com/questions/44217923/how-does-aes-decrypt-with-a-different-iv
         # TODO: needs to return as a string
-        # retval = iv + encryptor.update(padded_data) + encryptor.finalize()
-        # return int.from_bytes(retval, "big")
-        ciphertext = iv + encryptor.update(padded_data) + encryptor.finalize()
-        # attach MAC in plaintext
-        ciphertext += ciphertext[-16:]
+        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+        print(ciphertext)
+        
         return ciphertext
         # return iv + encryptor.update(padded_data) + encryptor.finalize()
 
