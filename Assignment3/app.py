@@ -47,7 +47,10 @@ class Assignment3VPN:
         self.s = None
         self.conn = None
         self.addr = None
-        self.name = "Server"
+        if self.mode.get() == 0:
+            self.name = "Client"
+        else: 
+            self.name = "Server" 
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
