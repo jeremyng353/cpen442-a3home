@@ -47,15 +47,10 @@ class Assignment3VPN:
         self.s = None
         self.conn = None
         self.addr = None
-        
+        self.name = None
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
-
-        # Creating a protocol object
-        # TODO: move this to create connection so the symmetric_key can be dynamically set by self.sharedSecret
-        symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
-        self.prtcl = Protocol("Name", symmetric_key, 23, 17)
 
      
     # Distructor     
@@ -74,17 +69,31 @@ class Assignment3VPN:
     # Handle client mode selection
     def ClientModeSelected(self):
         self.hostName.set("localhost")
-        self.prtcl.SetMyName("Client")
+        self.name = "Client"
 
 
     # Handle sever mode selection
     def ServerModeSelected(self):
-        self.prtcl.SetMyName("Server")
+        self.name = "Server"
 
 
     # Create a TCP connection between the client and the server
     def CreateConnection(self):
         # Change button states
+        symmetric_key = self.sharedSecret.get()
+        print(symmetric_key)
+        if len(symmetric_key) > 16 : 
+            symmetric_key = symmetric_key[0:15]
+            print(symmetric_key)
+        else: 
+            symmetric_key = symmetric_key.zfill(16)
+            print(symmetric_key)
+
+        symmetric_key = symmetric_key.encode()
+        print(symmetric_key)
+
+        self.prtcl = Protocol(self.name, symmetric_key, 23, 17)
+
         self._ChangeConnectionMode()
         
         # Create connection
