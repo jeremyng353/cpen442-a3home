@@ -87,6 +87,10 @@ class Assignment3VPN:
         # Create connection
         if self._CreateTCPConnection():
             if self.mode.get() == 0:
+                print('self mode is 0')
+                # TODO: when key is bytes: client can't secure connection
+                print(f'type of sharedSecret: {type(self.sharedSecret.get())}')
+                self.prtcl.SetSharedSecret(self.sharedSecret.get())
                 # enable the secure and send buttons
                 self.secureButton["state"] = "enable"
                 self.sendButton["state"] = "enable"
@@ -145,6 +149,7 @@ class Assignment3VPN:
             try:
                 # Receiving all the data
                 cipher_text = self.conn.recv(4096)
+                print(f'receive msg: {cipher_text}')
 
                 # Check if socket is still open
                 if cipher_text == None or len(cipher_text) == 0:
@@ -153,11 +158,13 @@ class Assignment3VPN:
 
                 # Checking if the received message is part of your protocol
                 if self.prtcl.IsMessagePartOfProtocol(cipher_text):
+                    print('message is part of protocol')
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
                     # Processing the protocol message
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     if self.prtcl._nextExpectedHandshakeMessage != 5:
+                        print(f'send handshake msg: {sendMessage}')
                         self._sendHandshakeMessage(sendMessage)
 
                 # Otherwise, decrypting and showing the messaage
