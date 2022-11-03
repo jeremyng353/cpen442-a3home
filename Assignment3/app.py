@@ -148,9 +148,7 @@ class Assignment3VPN:
             try:
                 # Receiving all the data
                 cipher_text = bleach.clean(self.conn.recv(4096).decode())
-                print(cipher_text)
                 cipher_text = cipher_text.encode()
-                print(cipher_text)
 
                 plain_text = None
                 # Check if socket is still open
