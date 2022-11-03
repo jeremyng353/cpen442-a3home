@@ -83,17 +83,16 @@ class Assignment3VPN:
     # Create a TCP connection between the client and the server
     def CreateConnection(self):
         # Change button states
+
+        # process the shared secret
         symmetric_key = self.sharedSecret.get()
-        print(symmetric_key)
         if len(symmetric_key) > 16 : 
             symmetric_key = symmetric_key[0:15]
-            print(symmetric_key)
         else: 
             symmetric_key = symmetric_key.zfill(16)
-            print(symmetric_key)
 
+        # convert to bytes
         symmetric_key = symmetric_key.encode()
-        print(symmetric_key)
 
         self.prtcl = Protocol(self.name, symmetric_key, 23, 17)
 
