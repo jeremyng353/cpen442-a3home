@@ -47,7 +47,7 @@ class Assignment3VPN:
         self.s = None
         self.conn = None
         self.addr = None
-        self.name = None
+        self.name = "Server"
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
@@ -173,6 +173,7 @@ class Assignment3VPN:
                     sendMessage = self.prtcl.ProcessReceivedProtocolMessage(cipher_text.decode('utf-8'))
                     if self.prtcl._nextExpectedHandshakeMessage != 5:
                         self._sendHandshakeMessage(sendMessage)
+    
                 # Otherwise, decrypting and showing the messaage
                 else: 
                     if self.secureButton["state"] == "disabled":
@@ -226,7 +227,7 @@ class Assignment3VPN:
         # Rb, E("Server", Ra, DH), 3
         # Rb, 3     E("Server", Ra, DH)
         # bytes(Rb, 3), E("Server", Ra, DH)
-
+        
         self.conn.send(handshake_list.encode())
 
     # Clear the logs window
