@@ -7,6 +7,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 import json
+import bleach
 
 # local import from "protocol.py"
 from protocol import Protocol
@@ -50,7 +51,7 @@ class Assignment3VPN:
         # Server socket threads
         self.server_thread = Thread(target=self._AcceptConnections, daemon=True)
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
-        
+
         # Creating a protocol object
         # TODO: move this to create connection so the symmetric_key can be dynamically set by self.sharedSecret
         symmetric_key = b'\xdc\xd2]%l3%\x0b(\xc8=c)\xae7g'
@@ -146,7 +147,11 @@ class Assignment3VPN:
         while True:
             try:
                 # Receiving all the data
-                cipher_text = self.conn.recv(4096)
+                cipher_text = bleach.clean(self.conn.recv(4096).decode())
+                print(cipher_text)
+                cipher_text = cipher_text.encode()
+                print(cipher_text)
+
                 plain_text = None
                 # Check if socket is still open
                 if cipher_text == None or len(cipher_text) == 0:
